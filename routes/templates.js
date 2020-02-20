@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const dburl = 'mongodb://localhost:27017/bloonbot';
+const dburl = 'mongodb://heroku_h4f3xwnf:1p3tq6gev7p4bgpfvqtacasgav@ds139167.mlab.com:39167/heroku_h4f3xwnf';
 mongoose.connect(dburl, {
     useNewUrlParser: true,
     useUnifiedTopology: true
