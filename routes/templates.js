@@ -24,7 +24,7 @@ module.exports = app => {
     
     app.get('/templates', (req, res) => {
         Templates.find({}, (err, data) => {
-            if(err) throw err
+            // if(err) throw err
 
             res.json(data)
         })
@@ -32,7 +32,7 @@ module.exports = app => {
 
     app.post('/templates', (req, res) => {
         const newTemplate = Templates.create(req.body, (err, data) => {
-            if(err) throw err
+            // if(err) throw err
             
             res.json(data)
         })
@@ -40,7 +40,7 @@ module.exports = app => {
 
     app.delete('/templates/:id', (req, res) => {
         Templates.findByIdAndDelete(req.params.id, (err, data) => {
-            if(err) throw err
+            // if(err) throw err
 
             res.json(data)
         })
@@ -57,7 +57,7 @@ module.exports = app => {
     
     app.get('/templates/:id', (req, res) => {
         Templates.findById(req.params.id, (err, data) => {
-            if(err) throw err;
+            // if(err) throw err;
 
             res.json(data)
         })
