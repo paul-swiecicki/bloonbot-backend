@@ -19,31 +19,47 @@ const Templates = mongoose.model('Templates', templatesSchema)
 
 module.exports = app => {
     app.get('/', (req, res) => {
-        res.send('bot backend')
+        try {
+            res.send('bot backend')
+        } catch(err) {
+            console.log(err);
+        }
     })
     
     app.get('/templates', (req, res) => {
-        Templates.find({}, (err, data) => {
-            // if(err) throw err
-
-            res.json(data)
-        })
+        try {
+            Templates.find({}, (err, data) => {
+                // if(err) throw err
+                
+                res.json(data)
+            })
+        } catch(err) {
+            console.log(err);
+        }
     })
-
+    
     app.post('/templates', (req, res) => {
-        const newTemplate = Templates.create(req.body, (err, data) => {
-            // if(err) throw err
-            
-            res.json(data)
-        })
+        try {
+            const newTemplate = Templates.create(req.body, (err, data) => {
+                // if(err) throw err
+                
+                res.json(data)
+            })
+        } catch(err) {
+            console.log(err);
+        }
     })
 
     app.delete('/templates/:id', (req, res) => {
-        Templates.findByIdAndDelete(req.params.id, (err, data) => {
-            // if(err) throw err
+        try {
+            Templates.findByIdAndDelete(req.params.id, (err, data) => {
+                // if(err) throw err
 
-            res.json(data)
-        })
+                res.json(data)
+            })
+        } catch(err) {
+            console.log(err);
+        }
     })
 
     // app.delete('/templates/:name', (req, res) => {
@@ -56,10 +72,14 @@ module.exports = app => {
     // })
     
     app.get('/templates/:id', (req, res) => {
-        Templates.findById(req.params.id, (err, data) => {
-            // if(err) throw err;
+        try {
+            Templates.findById(req.params.id, (err, data) => {
+                // if(err) throw err;
 
-            res.json(data)
-        })
+                res.json(data)
+            })
+        } catch(err) {
+            console.log(err);
+        }
     })
 }
