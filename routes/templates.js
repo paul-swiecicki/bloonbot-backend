@@ -1,21 +1,12 @@
 const mongoose = require('mongoose')
 
-const dburl = 'mongodb://heroku_h4f3xwnf:1p3tq6gev7p4bgpfvqtacasgav@ds139167.mlab.com:39167/heroku_h4f3xwnf';
-mongoose.connect(dburl, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-
 const templatesSchema = new mongoose.Schema({
     name: String,
-    author: {
-        id: String,
-        name: String
-    },
+    author: Object,
     template: Object
 })
 
-const Templates = mongoose.model('Templates', templatesSchema)
+const Templates = mongoose.model('Templates', templatesSchema, 'templates')
 
 module.exports = app => {
     app.get('/', (req, res) => {
