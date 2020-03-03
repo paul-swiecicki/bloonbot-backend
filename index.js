@@ -2,6 +2,8 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const session = require('express-session')
+const MongoStore = require('connect-mongo')(session);
+const mongoose = require('mongoose');
 const app = express()
 
 const db = require('./connection.js')
@@ -16,7 +18,7 @@ app.use(session({
     secret: 'secret-key',
     resave: false,
     saveUninitialized: false,
-    store: new session.MemoryStore()
+    store: new MongoStore({ mongooseConnection: mongoose.connection }) //todo ogarnac opcje itd
 }))
 
 users(app)
