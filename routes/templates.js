@@ -47,17 +47,25 @@ module.exports = app => {
     })
 
     app.delete('/templates/:id', (req, res) => {
+        console.log(req.session.user);
+        
         if(req.session.user){
             Templates.findById(req.params.id, (err, data) => {
                 if(err) return sendServerError(res, err);
                 
-                if(data.author && req.session.user.id === data.author.id || req.session.user.permissions === 'all'){
-                    data.remove((err, data) => {
-                        if(err) return sendServerError(res, err);
-                        
-                        res.json(data)
+                if(data && data.author){
+                    if(req.session.user.id === data.author.id || req.session.user.permissions === 'all'){
+                        data.remove((err, data) => {
+                            if(err) return sendServerError(res, err);
+                            
+                            res.json(data)
+                        })
+                    } else return authError(res)
+                } else {
+                    return res.status(500).json({
+                        msg: 'Item does not exists.'
                     })
-                } else return authError(res)
+                }
 
                 res.json(data)
             })
