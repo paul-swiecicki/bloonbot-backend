@@ -1,6 +1,8 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 
+const { sendServerError, incorrectLogin } = require('../functions/errors')
+
 const Schema = new mongoose.Schema({
     login: String,
     password: String,
@@ -12,7 +14,7 @@ const Users = mongoose.model('Users', Schema, 'users')
 module.exports = app => {
     app.get('/users', (req, res) => {
         Users.find((err, data) => {
-            if(err) console.log(err);
+            if(err) return sendServerError(res, err);
 
             res.json(data)
         })
@@ -23,7 +25,7 @@ module.exports = app => {
         const password = req.body.password;
 
         Users.findOne({login}, async (err, data) => {
-            if(err) console.log(err);
+            if(err) return sendServerError(res, err);
             
             if(data){
                 return res.status(401).json({
@@ -37,27 +39,37 @@ module.exports = app => {
                     password: hashedPassword,
                     permissions: 'standard'
                 }, (err, data) => {
-                    if(err) console.log(err);
-                    res.sendStatus(201)
+                    if(err) return sendServerError(res, err);
+
+                    res.status(201).json({
+                        msg: 'Account created. You can sign in now.'
+                    })
                 })
             }
         })
     })
 
     app.post('/users/signin', (req, res) => {
+        // console.log(req.session);
+        const login = req.body.login;
+        const password = req.body.password;
+        
+        Users.findOne({login}, async (err, data) => {
+            if(err) return sendServerError(res, err);
+            const userId = data._id;
 
-        const incorrectLogin = (res) => {
-            return res.status(401).json({
-                msg: 'Incorrect login or password.'
-            })
-        }
-
-        Users.findOne({login: req.body.login}, async (err, data) => {
             if(data){
-                if(err) console.log(err);
-                
-                if(await bcrypt.compare(req.body.password, data.password)){
-                    return res.sendStatus(200)
+                if(await bcrypt.compare(password, data.password)){
+                    req.session.user = {
+                        id: userId,
+                        login,
+                        permissions: data.permissions
+                    }
+
+                    return res.status(200).json({
+                        login,
+                        msg: 'Logged in'
+                    })
                 } else {
                     return incorrectLogin(res)
                 }
@@ -65,5 +77,21 @@ module.exports = app => {
                 return incorrectLogin(res)
             }
         })
+    })
+
+    app.post('/users/logout', (req, res) => {
+        if(req.session.user){
+            req.session.destroy(err => {
+                if(err) return sendServerError(res, err);
+
+                else res.status(200).json({
+                    msg: 'Logged out successfully'
+                });
+            })
+        } else {
+            res.status(401).json({
+                msg: 'Cannot log out, nobody is logged in.'
+            })
+        }
     })
 }

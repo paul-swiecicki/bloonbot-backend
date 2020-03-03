@@ -1,5 +1,7 @@
 const mongoose = require('mongoose')
 
+const { sendServerError, authError } = require('../functions/errors')
+
 const templatesSchema = new mongoose.Schema({
     name: String,
     author: Object,
@@ -18,44 +20,55 @@ module.exports = app => {
     })
     
     app.get('/templates', (req, res) => {
-        try {
-            Templates.find({}, (err, data) => {
-                // if(err) throw err
-                
-                res.json(data)
-            })
-        } catch(err) {
-            console.log(err);
-        }
+        Templates.find({}, (err, data) => {
+            if(err) return sendServerError(res, err);
+            
+            res.json(data)
+        })
     })
     
     app.post('/templates', (req, res) => {
-        try {
-            const newTemplate = Templates.create(req.body, (err, data) => {
-                // if(err) throw err
-                
+        const user = req.session.user;
+        if(user){
+            Templates.create({
+                ...req.body,
+                author: {
+                    id: user.id,
+                    login: user.login
+                }
+            }, (err, data) => {
+                if(err) return sendServerError(res, err);
+
                 res.json(data)
             })
-        } catch(err) {
-            console.log(err);
+        } else {
+            return authError(res)
         }
     })
 
     app.delete('/templates/:id', (req, res) => {
-        try {
-            Templates.findByIdAndDelete(req.params.id, (err, data) => {
-                // if(err) throw err
+        if(req.session.user){
+            Templates.findById(req.params.id, (err, data) => {
+                if(err) return sendServerError(res, err);
+                
+                if(data.author && req.session.user.id === data.author.id || req.session.user.permissions === 'all'){
+                    data.remove((err, data) => {
+                        if(err) return sendServerError(res, err);
+                        
+                        res.json(data)
+                    })
+                } else return authError(res)
 
                 res.json(data)
             })
-        } catch(err) {
-            console.log(err);
+        } else {
+            return authError(res)
         }
     })
 
     // app.delete('/templates/:name', (req, res) => {
     //     Templates.findOneAndDelete({}, (err, data) => {
-    //         if(err) throw err
+    //         if(err) return sendServerError(res, err);
 
     //         console.log(data);
     //         res.json(data)
@@ -63,14 +76,10 @@ module.exports = app => {
     // })
     
     app.get('/templates/:id', (req, res) => {
-        try {
-            Templates.findById(req.params.id, (err, data) => {
-                // if(err) throw err;
+        Templates.findById(req.params.id, (err, data) => {
+            if(err) return sendServerError(res, err);
 
-                res.json(data)
-            })
-        } catch(err) {
-            console.log(err);
-        }
+            res.json(data)
+        })
     })
 }

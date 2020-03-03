@@ -1,6 +1,7 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
+const session = require('express-session')
 const app = express()
 
 const db = require('./connection.js')
@@ -11,6 +12,11 @@ const templates = require('./routes/templates')
 app.use(bodyParser.json());
 app.use(cors());
 app.options('*', cors())
+app.use(session({
+    secret: 'secret-key',
+    resave: false,
+    saveUninitialized: false
+}))
 
 users(app)
 templates(app)
