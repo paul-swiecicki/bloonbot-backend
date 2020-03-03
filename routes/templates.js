@@ -47,7 +47,7 @@ module.exports = app => {
     })
 
     app.delete('/templates/:id', (req, res) => {
-        console.log(req.session.user);
+        console.log(req.session);
         
         if(req.session.user){
             Templates.findById(req.params.id, (err, data) => {

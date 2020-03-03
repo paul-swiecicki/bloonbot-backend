@@ -15,7 +15,8 @@ app.options('*', cors())
 app.use(session({
     secret: 'secret-key',
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    store: new MemoryStore()
 }))
 
 users(app)
