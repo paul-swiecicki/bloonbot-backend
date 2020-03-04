@@ -29,6 +29,7 @@ module.exports = app => {
     
     app.post('/templates', (req, res) => {
         const user = req.session.user;
+        console.log(req.session);
         if(user){
             Templates.create({
                 ...req.body,

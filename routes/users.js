@@ -65,6 +65,8 @@ module.exports = app => {
                         login,
                         permissions: data.permissions
                     }
+                    req.session.save()
+                    console.log(req.session);
 
                     return res.status(200).json({
                         login,
@@ -77,6 +79,7 @@ module.exports = app => {
                 return incorrectLogin(res)
             }
         })
+        console.log(req.session);
     })
 
     app.post('/users/logout', (req, res) => {
