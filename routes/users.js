@@ -1,7 +1,27 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
+const passport = require('passport')
 
 const { sendServerError, incorrectLogin } = require('../functions/errors')
+const initPassport = require('../passport-config')
+//!!!!!!!!!
+initPassport(passport,
+    (login, callback) => {
+        Users.findOne({login}, (err, data) => {
+            if(err) console.log(err);
+            // console.log(data);
+            
+            callback(data)
+        })
+    },
+    (id, callback) => {
+        Users.findById(id, (err, data) => {
+            if(err) console.log(err);
+            
+            callback(data)
+        })
+    }
+)
 
 const Schema = new mongoose.Schema({
     login: String,
@@ -49,35 +69,42 @@ module.exports = app => {
         })
     })
 
-    app.post('/users/signin', (req, res) => {
-        // console.log(req.session);
-        const login = req.body.login;
-        const password = req.body.password;
+    app.post('/users/signin', passport.authenticate('local', {
+        successMessage: 'succcccesss',
+        failureMessage: 'faiiiilll',
+        failureFlash: true
+    }))
+    // app.post('/users/signin', (req, res) => {
+    //     // console.log(req.session);
+    //     const login = req.body.login;
+    //     const password = req.body.password;
         
-        Users.findOne({login}, async (err, data) => {
-            if(err) return sendServerError(res, err);
-            const userId = data._id;
+    //     Users.findOne({login}, async (err, data) => {
+    //         if(err) return sendServerError(res, err);
+    //         const userId = data._id;
 
-            if(data){
-                if(await bcrypt.compare(password, data.password)){
-                    req.session.user = {
-                        id: userId,
-                        login,
-                        permissions: data.permissions
-                    }
+    //         if(data){
+    //             if(await bcrypt.compare(password, data.password)){
+    //                 req.session.user = {
+    //                     id: userId,
+    //                     login,
+    //                     permissions: data.permissions
+    //                 }
 
-                    return res.status(200).json({
-                        login,
-                        msg: 'Logged in'
-                    })
-                } else {
-                    return incorrectLogin(res)
-                }
-            } else {
-                return incorrectLogin(res)
-            }
-        })
-    })
+    //                 console.log(req.session);
+
+    //                 return res.status(200).json({
+    //                     login,
+    //                     msg: 'Logged in'
+    //                 })
+    //             } else {
+    //                 return incorrectLogin(res)
+    //             }
+    //         } else {
+    //             return incorrectLogin(res)
+    //         }
+    //     })
+    // })
 
     app.post('/users/logout', (req, res) => {
         if(req.session.user){

@@ -1,9 +1,15 @@
+// if(process.env.NODE_ENV !== 'production'){
+//     require('dotenv').config()
+// }
+
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const session = require('express-session')
-const MongoStore = require('connect-mongo')(session);
-const mongoose = require('mongoose');
+// const MongoStore = require('connect-mongo')(session);
+// const mongoose = require('mongoose');
+const flash = require('express-flash')
+const passport = require('passport')
 const app = express()
 
 const db = require('./connection.js')
@@ -14,12 +20,18 @@ const templates = require('./routes/templates')
 app.use(bodyParser.json());
 app.use(cors());
 app.options('*', cors())
+
 app.use(session({
-    secret: 'secret-key',
+    secret: 'secretie',
+    // secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: false,
-    store: new MongoStore({ mongooseConnection: mongoose.connection }) //todo ogarnac opcje itd
+    saveUninitialized: false
+    // store: new MongoStore({ mongooseConnection: mongoose.connection })
 }))
+
+app.use(flash());
+app.use(passport.initialize())
+app.use(passport.session())
 
 users(app)
 templates(app)
