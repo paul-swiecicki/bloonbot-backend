@@ -79,7 +79,7 @@ module.exports = app => {
                 return incorrectLogin(res)
             }
         })
-        console.log(req.session);
+        // console.log(req.session);
     })
 
     app.post('/users/logout', (req, res) => {

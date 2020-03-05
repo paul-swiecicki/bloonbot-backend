@@ -19,7 +19,7 @@ app.options('*', cors())
 const store = new MongoDBStore({
     uri: 'mongodb://heroku_h4f3xwnf:1p3tq6gev7p4bgpfvqtacasgav@ds139167.mlab.com:39167/heroku_h4f3xwnf',
     collection: 'sessions',
-  })
+})
 app.use(session({
     secret: 'secret-key',
     resave: true,
