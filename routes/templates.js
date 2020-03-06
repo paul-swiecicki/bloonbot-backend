@@ -28,7 +28,7 @@ module.exports = app => {
     })
     
     app.post('/templates', (req, res) => {
-        console.log(req.session);
+        console.log(req.isAuthenticated());
         
         const user = req.session.user;
         if(user){

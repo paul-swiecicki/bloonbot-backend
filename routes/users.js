@@ -6,19 +6,22 @@ const { sendServerError, incorrectLogin } = require('../functions/errors')
 const initPassport = require('../passport-config')
 //!!!!!!!!!
 initPassport(passport,
-    (login, callback) => {
-        Users.findOne({login}, (err, data) => {
-            if(err) console.log(err);
-            // console.log(data);
-            
-            callback(data)
+    (login) => {
+        return new Promise((resolve, reject) => {
+            Users.findOne({login}, (err, data) => {
+                if(err) reject(err);
+                // console.log(data);
+                resolve(data)
+            })
         })
     },
-    (id, callback) => {
-        Users.findById(id, (err, data) => {
-            if(err) console.log(err);
-            
-            callback(data)
+    (id) => {
+        return new Promise((resolve, reject) => {
+            Users.findById(id, (err, data) => {
+                if(err) reject(err);
+                
+                resolve(data)
+            })
         })
     }
 )
@@ -69,56 +72,78 @@ module.exports = app => {
         })
     })
 
-    app.post('/users/signin', passport.authenticate('local', {
-        successMessage: 'succcccesss',
-        failureMessage: 'faiiiilll',
-        failureFlash: true
-    }))
-    // app.post('/users/signin', (req, res) => {
-    //     // console.log(req.session);
-    //     const login = req.body.login;
-    //     const password = req.body.password;
-        
-    //     Users.findOne({login}, async (err, data) => {
-    //         if(err) return sendServerError(res, err);
-    //         const userId = data._id;
+    app.post('/users/signin', 
+        (req, res, next) => {
+            passport.authenticate('local', function(err, user, info) {
+                if (err) { return res.sendStatus(500); }
+                if (!user) { return res.json(info); }
 
-    //         if(data){
-    //             if(await bcrypt.compare(password, data.password)){
-    //                 req.session.user = {
-    //                     id: userId,
-    //                     login,
-    //                     permissions: data.permissions
-    //                 }
+                req.logIn(user, (err) => {
+                    console.log(req.isAuthenticated());
+                    
+                    if(err) { return res.sendStatus(500); }
+                    return res.status(200).json({ msg: 'Logged in' });
+                });
 
-    //                 console.log(req.session);
+            })(req, res, next);
+        }
+        // ,
+        // (req, res) => {
 
-    //                 return res.status(200).json({
-    //                     login,
-    //                     msg: 'Logged in'
-    //                 })
-    //             } else {
-    //                 return incorrectLogin(res)
-    //             }
-    //         } else {
-    //             return incorrectLogin(res)
-    //         }
-    //     })
-    // })
+        //     return res.status(200).json({
+        //         login,
+        //         msg: 'Logged in'
+        //     })
+            
+        //     const login = req.body.login;
+        //     const password = req.body.password
+            
+        //     Users.findOne({login}, async (err, data) => {
+        //         if(err) return sendServerError(res, err);
+        //         const userId = data._id;
+    
+        //         if(data){
+        //             if(await bcrypt.compare(password, data.password)){
+        //                 req.session.user = {
+        //                     id: userId,
+        //                     login,
+        //                     permissions: data.permissions
+        //                 }
+    
+        //                 console.log(req.session);
+    
+        //             } else {
+        //                 return incorrectLogin(res)
+        //             }
+        //         } else {
+        //             return incorrectLogin(res)
+        //         }
+        //     })
+        // }
+    )
 
     app.post('/users/logout', (req, res) => {
-        if(req.session.user){
-            req.session.destroy(err => {
-                if(err) return sendServerError(res, err);
-
-                else res.status(200).json({
-                    msg: 'Logged out successfully'
-                });
-            })
+        console.log(req.isAuthenticated());
+        if(req.isAuthenticated()){
+            req.logout();
+            res.send('logouted')
+            console.log('authed: ', req.isAuthenticated());
         } else {
-            res.status(401).json({
-                msg: 'Cannot log out, nobody is logged in.'
-            })
+            res.send('no one logged')
         }
+        
+        // if(req.session.user){
+        //     req.session.destroy(err => {
+        //         if(err) return sendServerError(res, err);
+
+        //         else res.status(200).json({
+        //             msg: 'Logged out successfully'
+        //         });
+        //     })
+        // } else {
+        //     res.status(401).json({
+        //         msg: 'Cannot log out, nobody is logged in.'
+        //     })
+        // }
     })
 }

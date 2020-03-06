@@ -6,9 +6,9 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const session = require('express-session')
-// const MongoStore = require('connect-mongo')(session);
-// const mongoose = require('mongoose');
-const flash = require('express-flash')
+const MongoStore = require('connect-mongo')(session);
+const mongoose = require('mongoose');
+// const flash = require('express-flash')
 const passport = require('passport')
 const app = express()
 
@@ -22,14 +22,13 @@ app.use(cors());
 app.options('*', cors())
 
 app.use(session({
-    secret: 'secretie',
-    // secret: process.env.SESSION_SECRET,
+    secret: 'waq89ufaiw3r09jarfipkfa0sa',
     resave: false,
-    saveUninitialized: false
-    // store: new MongoStore({ mongooseConnection: mongoose.connection })
+    saveUninitialized: false,
+    store: new MongoStore({ mongooseConnection: mongoose.connection })
 }))
 
-app.use(flash());
+// app.use(flash());
 app.use(passport.initialize())
 app.use(passport.session())
 
