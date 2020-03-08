@@ -10,6 +10,14 @@ const templatesSchema = new mongoose.Schema({
 
 const Templates = mongoose.model('Templates', templatesSchema, 'templates')
 
+const checkAuth = (req, res, next) => {
+    if(req.isAuthenticated()){
+        next()
+    } else {
+        return authError(res)
+    }
+}
+
 module.exports = app => {
     app.get('/', (req, res) => {
         try {
@@ -28,52 +36,42 @@ module.exports = app => {
     })
     
     app.post('/templates', (req, res) => {
-        console.log(req.isAuthenticated());
-        
-        const user = req.session.user;
-        if(user){
+        const user = req.user;
+        if(req.isAuthenticated()){
             Templates.create({
                 ...req.body,
                 author: {
                     id: user.id,
-                    login: user.login
+                    name: user.login
                 }
             }, (err, data) => {
                 if(err) return sendServerError(res, err);
-
+                // console.log(data);
                 res.json(data)
             })
         } else {
-            return authError(res)
+            return res.status(401).json({
+                msg: 'Not allowed - log in or register first.'
+            })
         }
     })
 
-    app.delete('/templates/:id', (req, res) => {
-        console.log(req.session);
-        
-        if(req.session.user){
-            Templates.findById(req.params.id, (err, data) => {
-                if(err) return sendServerError(res, err);
-                
-                if(data && data.author){
-                    if(req.session.user.id === data.author.id || req.session.user.permissions === 'all'){
-                        data.remove((err, data) => {
-                            if(err) return sendServerError(res, err);
-                            
-                            res.json(data)
-                        })
-                    } else return authError(res)
-                } else {
-                    return res.status(500).json({
-                        msg: 'Item does not exists.'
-                    })
-                }
-
-                res.json(data)
-            })
-        } else {
-            return authError(res)
-        }
+    app.delete('/templates/:id', checkAuth, (req, res) => {
+        Templates.findById(req.params.id, (err, data) => {
+            if(err) return sendServerError(res, err);
+            
+            if(data && data.author && req.user.id === data.author.id || req.user.permissions === 'all'){
+                data.remove((err, data) => {
+                    if(err) return sendServerError(res, err);
+                    
+                    res.status(200).json(data)
+                })
+            } else {
+                return res.status(401).json({
+                    msg: 'Not allowed.'
+                })
+            }
+        })
     })
 
     // app.delete('/templates/:name', (req, res) => {

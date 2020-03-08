@@ -18,8 +18,8 @@ const users = require('./routes/users')
 const templates = require('./routes/templates')
 // app.use(express.static('../public'))
 app.use(bodyParser.json());
-app.use(cors());
-app.options('*', cors())
+// app.use(cors());
+// app.options('*', cors())
 
 app.use(session({
     secret: 'waq89ufaiw3r09jarfipkfa0sa',
@@ -28,6 +28,19 @@ app.use(session({
     store: new MongoStore({ mongooseConnection: mongoose.connection })
 }))
 
+app.use(cors({origin:true, credentials: true}))
+app.use(function (req, res, next) {
+    // res.header("Set-Cookie", "HttpOnly;Secure;SameSite=Strict");
+    res.header('Access-Control-Allow-Credentials', true);
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Origin, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-Response-Time, X-PINGOTHER, X-CSRF-Token,Authorization');
+    if (req.method === "OPTIONS") {
+        return res.status(200).end();
+    } else {
+        next();
+    }
+});
 // app.use(flash());
 app.use(passport.initialize())
 app.use(passport.session())

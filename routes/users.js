@@ -4,7 +4,7 @@ const passport = require('passport')
 
 const { sendServerError, incorrectLogin } = require('../functions/errors')
 const initPassport = require('../passport-config')
-//!!!!!!!!!
+
 initPassport(passport,
     (login) => {
         return new Promise((resolve, reject) => {
@@ -76,74 +76,33 @@ module.exports = app => {
         (req, res, next) => {
             passport.authenticate('local', function(err, user, info) {
                 if (err) { return res.sendStatus(500); }
-                if (!user) { return res.json(info); }
+                if (!user) { return res.status(401).json(info); }
 
                 req.logIn(user, (err) => {
-                    console.log(req.isAuthenticated());
-                    
                     if(err) { return res.sendStatus(500); }
-                    return res.status(200).json({ msg: 'Logged in' });
+                    return res.status(200).json({ msg: 'Logged in', login: user.login });
                 });
 
             })(req, res, next);
         }
-        // ,
-        // (req, res) => {
+    )
 
-        //     return res.status(200).json({
-        //         login,
-        //         msg: 'Logged in'
-        //     })
-            
-        //     const login = req.body.login;
-        //     const password = req.body.password
-            
-        //     Users.findOne({login}, async (err, data) => {
-        //         if(err) return sendServerError(res, err);
-        //         const userId = data._id;
-    
-        //         if(data){
-        //             if(await bcrypt.compare(password, data.password)){
-        //                 req.session.user = {
-        //                     id: userId,
-        //                     login,
-        //                     permissions: data.permissions
-        //                 }
-    
-        //                 console.log(req.session);
-    
-        //             } else {
-        //                 return incorrectLogin(res)
-        //             }
-        //         } else {
-        //             return incorrectLogin(res)
-        //         }
-        //     })
-        // }
+    app.post('/users/authorize', 
+        (req, res) => {
+            if(req.isAuthenticated()){
+                res.status(200).json({ login: req.user.login })
+            } else {
+                res.status(401).json({ msg: 'Not authorized' })
+            }
+        }
     )
 
     app.post('/users/logout', (req, res) => {
-        console.log(req.isAuthenticated());
         if(req.isAuthenticated()){
             req.logout();
-            res.send('logouted')
-            console.log('authed: ', req.isAuthenticated());
+            res.status(200).json({msg: 'Logged out'})
         } else {
-            res.send('no one logged')
+            res.status(401).json({msg: 'No one is logged in'})
         }
-        
-        // if(req.session.user){
-        //     req.session.destroy(err => {
-        //         if(err) return sendServerError(res, err);
-
-        //         else res.status(200).json({
-        //             msg: 'Logged out successfully'
-        //         });
-        //     })
-        // } else {
-        //     res.status(401).json({
-        //         msg: 'Cannot log out, nobody is logged in.'
-        //     })
-        // }
     })
 }
