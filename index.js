@@ -18,6 +18,7 @@ const users = require('./routes/users')
 const templates = require('./routes/templates')
 // app.use(express.static('../public'))
 app.use(bodyParser.json());
+// app.use(bodyParser.text());
 // app.use(cors());
 // app.options('*', cors())
 
@@ -28,7 +29,11 @@ app.use(session({
     store: new MongoStore({ mongooseConnection: mongoose.connection })
 }))
 
-app.use(cors({origin:true, credentials: true}))
+app.use(cors({
+    origin: true,
+    credentials: true,
+    // methods: true
+}))
 app.use(function (req, res, next) {
     // res.header("Set-Cookie", "HttpOnly;Secure;SameSite=Strict");
     res.header('Access-Control-Allow-Credentials', true);
