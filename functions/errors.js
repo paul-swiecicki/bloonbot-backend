@@ -10,7 +10,7 @@ const incorrectLogin = (res) => {
 
 const authError = (res) => {
     return res.status(401).json({
-        msg: 'Cannot execute action - unauthorized.'
+        msg: 'Unauthorized - log in or register first.'
     })
 }
 

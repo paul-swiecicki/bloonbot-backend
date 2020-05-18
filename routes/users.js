@@ -1,30 +1,87 @@
-const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
+const passport = require('passport')
+const moment = require('moment')
 
 const { sendServerError, incorrectLogin } = require('../functions/errors')
+const initPassport = require('../passport-config')
 
-const Schema = new mongoose.Schema({
-    login: String,
-    password: String,
-    permissions: String // all or standard
-})
+const models = require('../models/models')
 
-const Users = mongoose.model('Users', Schema, 'users')
+initPassport(passport,
+    (login) => {
+        return new Promise((resolve, reject) => {
+            models.Users.findOne({login}, (err, data) => {
+                if(err) reject(err);
+                // console.log(data);
+                resolve(data)
+            })
+        })
+    },
+    (id) => {
+        return new Promise((resolve, reject) => {
+            models.Users.findById(id, (err, data) => {
+                if(err) reject(err);
+                
+                resolve(data)
+            })
+        })
+    }
+)
+
+const sendAuthData = (req, res) => {
+    if(req.isAuthenticated()){
+        const user = req.user;
+        const { login, permissions, autoSave } = user;
+        let updatingTemplate = null;
+
+        //? updating template saves
+        // if(updatingTemplate = user.updatingTemplate){
+        //     models.Templates.findById(updatingTemplate, (err, data) => {
+        //         if(err) return sendServerError(res, err);
+        //         res.status(200).json({ login, permissions, updatingTemplate: data })
+        //     })
+        // } else {
+            models.Templates.findById(autoSave)
+                .lean()
+                .exec((err, data) => {
+                    if(err) return sendServerError(res, err);
+                    
+                    if(data){
+                        // console.log('sent to ask if want to load: ', moment(data.timestamp, 'YYYYMMDD').toLocaleString());
+                        const createdAt = moment(data.timestamp, 'YYYYMMDD').fromNow();
+                        data.timestamp = createdAt;
+                    }
+
+                    res.status(200).json({ login, permissions, updatingTemplate, autoSave: data })
+                })
+        // }
+    } else {
+        res.status(401).json({ msg: 'Not authorized' })
+    }
+}
 
 module.exports = app => {
     app.get('/users', (req, res) => {
-        Users.find((err, data) => {
+        models.Users.find((err, data) => {
             if(err) return sendServerError(res, err);
 
             res.json(data)
         })
     })
 
+    app.get('/users/:login', (req, res) => {
+        models.Users.find({login: req.params.login}, (err, data) => {
+            if(err) return sendServerError(res, err);
+
+            res.json(data)
+        })
+    })
+    
     app.post('/users/register', (req, res) => {
         const login = req.body.login;
         const password = req.body.password;
 
-        Users.findOne({login}, async (err, data) => {
+        models.Users.findOne({login}, async (err, data) => {
             if(err) return sendServerError(res, err);
             
             if(data){
@@ -34,7 +91,7 @@ module.exports = app => {
             } else {
                 const hashedPassword = await bcrypt.hash(password, 10)
                 
-                Users.create({
+                models.Users.create({
                     login,
                     password: hashedPassword,
                     permissions: 'standard'
@@ -49,52 +106,44 @@ module.exports = app => {
         })
     })
 
-    app.post('/users/signin', (req, res) => {
-        // console.log(req.session);
-        const login = req.body.login;
-        const password = req.body.password;
-        
-        Users.findOne({login}, async (err, data) => {
-            if(err) return sendServerError(res, err);
-            const userId = data._id;
+    app.post('/users/signin', 
+        (req, res, next) => {
+            passport.authenticate('local', function(err, user, info) {
+                if (err) { return res.sendStatus(500); }
+                if (!user) { return res.status(401).json(info); }
 
-            if(data){
-                if(await bcrypt.compare(password, data.password)){
-                    req.session.user = {
-                        id: userId,
-                        login,
-                        permissions: data.permissions
-                    }
-                    req.session.save()
-                    console.log(req.session);
+                req.logIn(user, (err) => {
+                    if(err) return res.sendServerError(res, err)
 
-                    return res.status(200).json({
-                        login,
-                        msg: 'Logged in'
-                    })
-                } else {
-                    return incorrectLogin(res)
-                }
-            } else {
-                return incorrectLogin(res)
-            }
-        })
-        // console.log(req.session);
-    })
+                    sendAuthData(req, res)
+                    // let updatingTemplate = null;
+                    // const { login, permissions } = user;
+
+                    // if(updatingTemplate = user.updatingTemplate){
+                    //     models.Templates.findById(updatingTemplate, (err, data) => {
+                    //         if(err) return sendServerError(res, err);
+                    //         res.status(200).json({ login, permissions, updatingTemplate: data})
+                    //     })
+                    // } else {
+                    //     res.status(200).json({ login, permissions, updatingTemplate })
+                    // }
+                }); 
+            })(req, res, next);
+        }
+    )
+
+    app.post('/users/authorize', sendAuthData)
 
     app.post('/users/logout', (req, res) => {
-        if(req.session.user){
-            req.session.destroy(err => {
-                if(err) return sendServerError(res, err);
-
-                else res.status(200).json({
-                    msg: 'Logged out successfully'
-                });
-            })
+        if(req.isAuthenticated()){
+            req.logout();
+            res.status(200).json({msg: 'Logged out'})
         } else {
-            res.status(401).json({
-                msg: 'Cannot log out, nobody is logged in.'
-            })
+            res.status(401).json({msg: 'No one is logged in'})
         }
     })
+
+    // app.get('/users/:login/templates', (req, res) => {
+    //     models.Users.find()
+    // })
 }
