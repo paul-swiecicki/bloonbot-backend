@@ -34,27 +34,27 @@ const sendAuthData = (req, res) => {
         const { login, permissions, autoSave } = user;
         let updatingTemplate = null;
 
-        if(updatingTemplate = req.user.updatingTemplate){
-            models.Templates.findById(updatingTemplate, (err, data) => {
-                if(err) return sendServerError(res, err);
-                res.status(200).json({ login, permissions, updatingTemplate: data })
-            })
-            //todo send autosave 
-        } else {
+        //? updating template saves
+        // if(updatingTemplate = user.updatingTemplate){
+        //     models.Templates.findById(updatingTemplate, (err, data) => {
+        //         if(err) return sendServerError(res, err);
+        //         res.status(200).json({ login, permissions, updatingTemplate: data })
+        //     })
+        // } else {
             models.Templates.findById(autoSave)
                 .lean()
                 .exec((err, data) => {
                     if(err) return sendServerError(res, err);
-    
+                    
                     if(data){
+                        // console.log('sent to ask if want to load: ', moment(data.timestamp, 'YYYYMMDD').toLocaleString());
                         const createdAt = moment(data.timestamp, 'YYYYMMDD').fromNow();
                         data.timestamp = createdAt;
                     }
-                    // console.log(data);
-                    
+
                     res.status(200).json({ login, permissions, updatingTemplate, autoSave: data })
                 })
-        }
+        // }
     } else {
         res.status(401).json({ msg: 'Not authorized' })
     }

@@ -1,7 +1,10 @@
-const moment = require('moment')
+const moment = require('moment');
 
-const { sendServerError, authError } = require('../functions/errors')
-const models = require('../models/models')
+const { sendServerError, authError } = require('../functions/errors');
+const models = require('../models/models');
+
+const uploadBreak = 10;
+const maxNameLength = 40;
 
 const checkAuth = (req, res, next) => {
     if(req.isAuthenticated()){
@@ -17,7 +20,7 @@ const getTimeSince = (time) => {
     else return null
 }
 
-const templateAccessAuth = (user, temp, cb) => {
+const templateAccessAuth = (res, user, temp, cb) => {
     try {        
         if(user.id == temp.author.id || user.permissions === 'all'){
             cb()
@@ -25,7 +28,153 @@ const templateAccessAuth = (user, temp, cb) => {
             res.status(401).json({ msg: 'Not authorized' })
         }
     } catch (err) {
-        console.log(err);
+        sendServerError(res, err)
+    }
+}
+
+const createTemplate = (req, res) => {
+    const user = req.user;
+    const template = req.body;
+
+    if(!template.name) return res.status(400).json({msg: "No template data."})
+
+    const timeSinceLastUpload = getTimeSince(user.lastUploadTimestamp)
+    if(timeSinceLastUpload && timeSinceLastUpload < uploadBreak)
+        return res.status(401).json({msg: "A bit slower, please."})
+
+    if(template.name.length > maxNameLength)
+        return res.status(401).json({msg: `Template name too long (max ${maxNameLength}).`})
+
+    let autoSaveObj = {}
+    const isAutoSave = template.autoSave;
+    if(isAutoSave){
+        autoSaveObj = { private: true }
+    }
+
+    models.Templates.create({
+        ...template,
+        ...autoSaveObj,
+        author: {
+            id: user.id,
+            name: user.login
+        }
+    }, (err, createdTemp) => {
+        if(err) return sendServerError(res, err);
+
+        lastUploadTimestamp = getTime();
+
+        let userUpdateObj = {
+            '$push': {
+                'templates': createdTemp.id
+            }
+        };
+
+        if(isAutoSave){
+            userUpdateObj.autoSave = createdTemp.id;
+        } else { 
+            userUpdateObj.lastUploadTimestamp = lastUploadTimestamp;
+        }
+
+        models.Users.updateOne({_id: user.id},
+            {
+                ...userUpdateObj,
+            },
+
+            (err, updatedUser) => {
+                if(err) return console.log(err);
+
+                res.json(createdTemp)
+            }
+        )
+    })
+}
+
+const updateTemplate = (req, res) => {
+    const { user, body } = req;
+    const { mode, autoSave } = body;
+
+    try {
+        let tempIdToSearchBy = null;
+        
+        if(autoSave){
+            tempIdToSearchBy = user.autoSave;
+        }
+        else tempIdToSearchBy = req.params.id;
+
+        models.Templates.findById(tempIdToSearchBy, (err, temp) => {
+            if(err) return sendServerError(res, err)
+
+            if(!temp && autoSave){
+                createTemplate(req, res)
+            } else if(autoSave){
+                models.Templates.updateOne({_id: user.autoSave},
+                    {
+                        template: body.template,
+                        timestamp: Date.now()
+                    },
+                    (err, updatedTemp) => {
+                        if(err) console.log(err);
+                        // console.log(updatedTemp.n)
+                    }
+                )
+
+                models.Templates.find(
+                    {autoSave: true, 'author.id': user.id},
+                ).sort({timestamp: 'asc'})
+                    .exec((err, saves) => {
+                        if(err) console.log(err);
+                        // console.log(saves);
+                    })
+            } else {
+                templateAccessAuth(res, user, temp, () => {
+                    const updateUser = (updatingTempValue = null, send = true) => {
+                        return new Promise((resolve, reject) => {
+                            models.Users.updateOne({_id: user.id},
+                                {updatingTemplate: updatingTempValue},
+                                (err) => {
+                                    if(err){
+                                        if(send) sendServerError(res, err)
+                                        reject(err);
+                                    }
+                                    if(send) res.status(200).json(temp)
+                                    resolve(temp)
+                                })
+                        })
+                    }
+
+                    if(mode === 'init'){
+                        return updateUser(temp.id)
+                    } else if(mode === 'cancel'){
+                        return updateUser()
+                    } else if(mode === 'save'){
+                        const updateUserPromise = updateUser(null, false);
+                        const { template, name, private } = body;
+                        let propsToEdit = {}
+
+                        if(name && name.length < maxNameLength) propsToEdit.name = name;
+                        
+                        const updateTempPromise = new Promise((resolve, reject) => {
+                            models.Templates.updateOne({_id: req.params.id},
+                                { template, private, ...propsToEdit },
+                                (err, data) => {
+                                    if(err) reject(err)
+                                    resolve({msg: `Updated ${temp.name}`})
+                                }
+                            )
+                        })
+
+                        Promise.all([updateUserPromise, updateTempPromise]).then(vals => {
+                            const msg = vals[1].msg;
+                            return res.status(200).json({ msg });
+                        }).catch(err => {
+                            return sendServerError(res, err)
+                        })
+                    } else return res.status(400).json({msg: 'Mode not specified'})
+                })
+            }
+        })
+    } catch(err) {
+        return sendServerError(res, err)
     }
 }
 
@@ -70,81 +219,9 @@ module.exports = app => {
         }
     })
     
-    app.post('/templates', checkAuth, (req, res) => {
-        const uploadBreak = 0;
-        const maxNameLength = 20
+    app.post('/templates', checkAuth, createTemplate)
 
-        const user = req.user;
-        const template = req.body;
-
-        if(!template.name) return res.status(400).json({msg: "No template data."})
-
-        const timeSinceLastUpload = getTimeSince(user.lastUploadTimestamp)
-        if(timeSinceLastUpload && timeSinceLastUpload < uploadBreak)
-            return res.status(401).json({msg: "A bit slower, please."})
-
-        if(template.name.length > maxNameLength)
-            return res.status(401).json({msg: `Template name too long (max ${maxNameLength}).`})
-
-        let autoSaveObj = {}
-        const isAutoSave = template.autoSave;
-        if(isAutoSave){
-            autoSaveObj = { private: true }
-        }
-
-        models.Templates.create({
-            ...template,
-            ...autoSaveObj,
-            author: {
-                id: user.id,
-                name: user.login
-            }
-        }, (err, data) => {
-            if(err) return sendServerError(res, err);
-
-            lastUploadTimestamp = getTime();
-
-            let updateObj = {};
-            if(isAutoSave){
-                updateObj = {autoSave: data.id};
-
-                models.Templates.find({'author.id': user.id, autoSave: true})
-                .sort({timestamp: -1})
-                .exec((err, autoSaves) => {
-                    if(err) return console.log(err);
-                    
-                    if(autoSaves.length){ // if there is at least one autosave
-                        const autoSave = autoSaves[1] // choose oldest autosave
-                        if(autoSave && autoSave.name){
-                            autoSave.remove((err, autoSaves) => {
-                                if(err) return console.log(err);
-                            })
-                        }
-                    }
-                })
-            } else { 
-                updateObj = {
-                    '$push': {
-                        'templates': data.id
-                    }
-                }
-            }
-
-            models.Users.updateOne({_id: user.id},
-                {
-                    lastUploadTimestamp, 
-                    ...updateObj,
-                },
-                //todo push to autosave array
-                //todo   and pull (remove) when deleted
-                (err, data) => {
-                    if(err) return console.log(err);
-                }    
-            )
-
-            res.json(data)
-        })
-    })
+    app.post('/templates/autoSave', checkAuth, updateTemplate)
 
     app.delete('/templates/:id', checkAuth, (req, res) => {
         models.Templates.findById(req.params.id, (err, temp) => {
@@ -181,57 +258,5 @@ module.exports = app => {
         })
     })
 
-    app.put('/templates/:id', checkAuth, (req, res) => {
-        try {
-            models.Templates.findById(req.params.id, (err, temp) => {
-                if(err) return sendServerError(res, err)
-                const { user, body } = req;
-                const mode = body.mode;
-
-                templateAccessAuth(user, temp, () => {
-                    const updateUser = (updatingTempValue = null, send = true) => {
-                        return new Promise((resolve, reject) => {
-                            models.Users.updateOne({_id: user.id},
-                                {updatingTemplate: updatingTempValue},
-                                (err) => {
-                                    if(err){
-                                        if(send) sendServerError(res, err)
-                                        reject(err);
-                                    }
-                                    if(send) res.status(200).json({ name: temp.name })
-                                    resolve({name: temp.name})
-                                })
-                        })
-                    }
-                    
-                    if(mode === 'init'){
-                        return updateUser(temp.id)
-                    } else if(mode === 'cancel'){
-                        return updateUser()
-                    } else if(mode === 'save'){
-                        const updateUserPromise = updateUser(null, false);
-                        
-                        const updateTempPromise = new Promise((resolve, reject) => {
-                            models.Templates.updateOne({_id: req.params.id},
-                                {template: body.template},
-                                (err, data) => {
-                                    if(err) reject(err)
-                                    resolve({msg: `Updated ${temp.name}`})
-                                }
-                            )
-                        })
-
-                        Promise.all([updateUserPromise, updateTempPromise]).then(vals => {
-                            const [{msg}] = vals;
-                            return res.status(200).json({ msg });
-                        }).catch(err => {
-                            return sendServerError(res, err)
-                        })
-                    } else return res.status(400).json({msg: 'Mode not specified'})
-                })
-            })
-        } catch(err) {
-            return sendServerError(res, err)
-        }
-    })
+    app.put('/templates/:id', checkAuth, updateTemplate)
 }

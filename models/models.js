@@ -22,14 +22,16 @@ const templatesSchema = new Schema({
 })
 
 templatesSchema.pre(['remove'], function(next){
-    Users.updateOne({_id: this.author.id},
-        { '$pull': { templates: this._id } },
-        (err, pullInfo) => {
-            if(err) next(err)
-            if(!pullInfo.n) next(`Cannot remove ${this.name} from 'templates' of user`)
-            else next()
-        }
-    )
+    setTimeout(() => {
+        Users.updateOne({_id: this.author.id},
+            { '$pull': { templates: this._id } },
+            (err, pullInfo) => {
+                if(err) next(err)
+                if(!pullInfo.n) next(`Cannot remove ${this.name} from 'templates' of user`)
+                else next()
+            }
+        )
+    }, 1000)
 })
 
 const Templates = mongoose.model('Templates', templatesSchema)
