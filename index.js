@@ -27,7 +27,7 @@ app.use(session({
     secret: 'waq89ufaiw3r09jarfipkfa0sa',
     resave: false,
     saveUninitialized: false,
-    store: new MongoStore({ mongooseConnection: mongoose.connection })
+    store: new MongoDBStore({ mongooseConnection: mongoose.connection })
 }))
 
 app.use(cors({
