@@ -13,10 +13,16 @@ const mongoose = require('mongoose');
 const passport = require('passport')
 const app = express()
 
-const db = require('./connection.js')
+// const db = require('./connection.js')
 
 const users = require('./routes/users')
 const templates = require('./routes/templates')
+
+const dburl = 'mongodb://heroku_h4f3xwnf:1p3tq6gev7p4bgpfvqtacasgav@ds139167.mlab.com:39167/heroku_h4f3xwnf';
+mongoose.connect(dburl, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
 // app.use(express.static('../public'))
 app.use(bodyParser.json());
 // app.use(bodyParser.text());
@@ -59,7 +65,7 @@ templates(app)
 //     console.log('Server running on:', PORT);
 // })
 
-app.set( 'port', ( process.env.PORT || 5000 ));
+app.set( 'port', ( process.env.PORT || 3003 ));
 
 // Start node server
 app.listen( app.get( 'port' ), function() {
