@@ -15,6 +15,7 @@ const db = require('./connection.js')
 
 const users = require('./routes/users')
 const templates = require('./routes/templates')
+const mailer = require('./routes/mailer')
 
 // app.use(express.static('../public'))
 app.use(bodyParser.json());
@@ -48,6 +49,7 @@ app.use(passport.session())
 
 users(app)
 templates(app)
+mailer(app)
 
 app.set( 'port', ( process.env.PORT || 3003 ));
 
